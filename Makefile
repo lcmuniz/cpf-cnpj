@@ -1,4 +1,4 @@
-.PHONY: build install clean test windows
+.PHONY: build install clean test vet windows
 
 build:
 	@echo "Building cpf..."
@@ -25,4 +25,8 @@ clean:
 	@echo "Clean complete!"
 
 test:
-	@go test ./...
+	@go test -race ./...
+
+vet:
+	@gofmt -l . | (! grep .) || (echo "gofmt needed on the files above" && exit 1)
+	@go vet ./...
