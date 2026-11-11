@@ -1,44 +1,31 @@
 package generator
 
-import (
-	"fmt"
-	"math/rand"
+const cnpjMask = "##.###.###/####-##"
+
+var (
+	cnpjWeights1 = []int{5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2}
+	cnpjWeights2 = []int{6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2}
 )
 
+// GenerateCNPJ returns a random valid numeric CNPJ. If masked is true it is
+// formatted as XX.XXX.XXX/XXXX-XX, otherwise it is returned as 14 plain digits.
 func GenerateCNPJ(masked bool) string {
-	cnpj := make([]int, 14)
-
-	for i := 0; i < 12; i++ {
-		cnpj[i] = rand.Intn(10)
-	}
-
-	cnpj[12] = calculateCNPJDigit(cnpj[:12], []int{5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2})
-	cnpj[13] = calculateCNPJDigit(cnpj[:13], []int{6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2})
+	cnpj := append(randomDigits(12), 0, 0)
+	cnpj[12] = checkDigit(cnpj[:12], cnpjWeights1)
+	cnpj[13] = checkDigit(cnpj[:13], cnpjWeights2)
 
 	if masked {
-		return fmt.Sprintf("%d%d.%d%d%d.%d%d%d/%d%d%d%d-%d%d",
-			cnpj[0], cnpj[1],
-			cnpj[2], cnpj[3], cnpj[4],
-			cnpj[5], cnpj[6], cnpj[7],
-			cnpj[8], cnpj[9], cnpj[10], cnpj[11],
-			cnpj[12], cnpj[13])
+		return format(cnpj, cnpjMask)
 	}
-
-	return fmt.Sprintf("%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
-		cnpj[0], cnpj[1], cnpj[2], cnpj[3], cnpj[4], cnpj[5], cnpj[6],
-		cnpj[7], cnpj[8], cnpj[9], cnpj[10], cnpj[11], cnpj[12], cnpj[13])
+	return format(cnpj, "##############")
 }
 
-func calculateCNPJDigit(digits []int, weights []int) int {
-	sum := 0
-
-	for i, digit := range digits {
-		sum += digit * weights[i]
+// IsValidCNPJ reports whether s is a valid numeric CNPJ, with or without the mask.
+func IsValidCNPJ(s string) bool {
+	d, ok := parseDigits(s, 14)
+	if !ok || allEqual(d) {
+		return false
 	}
-
-	remainder := sum % 11
-	if remainder < 2 {
-		return 0
-	}
-	return 11 - remainder
+	return d[12] == checkDigit(d[:12], cnpjWeights1) &&
+		d[13] == checkDigit(d[:13], cnpjWeights2)
 }

@@ -1,49 +1,35 @@
 package generator
 
-import (
-	"fmt"
-	"math/rand"
-	"time"
-)
+const cpfMask = "###.###.###-##"
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
+// GenerateCPF returns a random valid CPF. If masked is true it is formatted
+// as XXX.XXX.XXX-XX, otherwise it is returned as 11 plain digits.
 func GenerateCPF(masked bool) string {
-	cpf := make([]int, 11)
-
-	for i := 0; i < 9; i++ {
-		cpf[i] = rand.Intn(10)
-	}
-
-	cpf[9] = calculateCPFDigit(cpf[:9])
-	cpf[10] = calculateCPFDigit(cpf[:10])
+	cpf := append(randomDigits(9), 0, 0)
+	cpf[9] = checkDigit(cpf[:9], cpfWeights(9))
+	cpf[10] = checkDigit(cpf[:10], cpfWeights(10))
 
 	if masked {
-		return fmt.Sprintf("%d%d%d.%d%d%d.%d%d%d-%d%d",
-			cpf[0], cpf[1], cpf[2],
-			cpf[3], cpf[4], cpf[5],
-			cpf[6], cpf[7], cpf[8],
-			cpf[9], cpf[10])
+		return format(cpf, cpfMask)
 	}
-
-	return fmt.Sprintf("%d%d%d%d%d%d%d%d%d%d%d",
-		cpf[0], cpf[1], cpf[2], cpf[3], cpf[4],
-		cpf[5], cpf[6], cpf[7], cpf[8], cpf[9], cpf[10])
+	return format(cpf, "###########")
 }
 
-func calculateCPFDigit(digits []int) int {
-	sum := 0
-	length := len(digits)
-
-	for i, digit := range digits {
-		sum += digit * (length + 1 - i)
+// IsValidCPF reports whether s is a valid CPF, with or without the mask.
+func IsValidCPF(s string) bool {
+	d, ok := parseDigits(s, 11)
+	if !ok || allEqual(d) {
+		return false
 	}
+	return d[9] == checkDigit(d[:9], cpfWeights(9)) &&
+		d[10] == checkDigit(d[:10], cpfWeights(10))
+}
 
-	remainder := sum % 11
-	if remainder < 2 {
-		return 0
+// cpfWeights returns the descending weights n+1 ... 2 used by the CPF algorithm.
+func cpfWeights(n int) []int {
+	w := make([]int, n)
+	for i := range w {
+		w[i] = n + 1 - i
 	}
-	return 11 - remainder
+	return w
 }
