@@ -6,71 +6,91 @@ import (
 	"strings"
 )
 
-// randomDigits returns n random decimal digits that are not all equal.
-// Numbers made of a single repeated digit (e.g. 111.111.111-11) pass the
+const (
+	digitChars        = "0123456789"
+	alphanumericChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+)
+
+// randomChars returns n random characters from charset that are not all equal.
+// Numbers made of a single repeated character (e.g. 111.111.111-11) pass the
 // check-digit math but are rejected by real validators, so they are skipped.
-func randomDigits(n int) []int {
+func randomChars(n int, charset string) []byte {
 	for {
-		digits := make([]int, n)
-		for i := range digits {
-			digits[i] = rand.IntN(10)
+		chars := make([]byte, n)
+		for i := range chars {
+			chars[i] = charset[rand.IntN(len(charset))]
 		}
-		if !allEqual(digits) {
-			return digits
+		if !allEqual(chars) {
+			return chars
 		}
 	}
 }
 
-// checkDigit computes a mod-11 check digit using the given weights.
-func checkDigit(digits, weights []int) int {
+// charValue is the value a character has in the check-digit calculation:
+// its ASCII code minus 48. Digits map to 0-9 and letters A-Z to 17-42, as
+// defined by the Receita Federal for the alphanumeric CNPJ.
+func charValue(c byte) int {
+	return int(c) - '0'
+}
+
+// checkDigit computes a mod-11 check digit over chars using the given weights.
+func checkDigit(chars []byte, weights []int) byte {
 	sum := 0
-	for i, d := range digits {
-		sum += d * weights[i]
+	for i, c := range chars {
+		sum += charValue(c) * weights[i]
 	}
 	if r := sum % 11; r >= 2 {
-		return 11 - r
+		return byte('0' + 11 - r)
 	}
-	return 0
+	return '0'
 }
 
-func allEqual(digits []int) bool {
-	for _, d := range digits[1:] {
-		if d != digits[0] {
+func allEqual(chars []byte) bool {
+	for _, c := range chars[1:] {
+		if c != chars[0] {
 			return false
 		}
 	}
 	return true
 }
 
-// format writes digits into a mask, replacing each '#' with the next digit.
-func format(digits []int, mask string) string {
+// format writes chars into a mask, replacing each '#' with the next character.
+func format(chars []byte, mask string) string {
 	var b strings.Builder
 	b.Grow(len(mask))
 	i := 0
-	for _, c := range mask {
-		if c == '#' {
-			b.WriteByte(byte('0' + digits[i]))
+	for _, m := range []byte(mask) {
+		if m == '#' {
+			b.WriteByte(chars[i])
 			i++
 		} else {
-			b.WriteRune(c)
+			b.WriteByte(m)
 		}
 	}
 	return b.String()
 }
 
-// parseDigits strips the punctuation allowed in a mask and returns the digits.
-// It returns ok=false if the input contains any other character or does not
-// have exactly n digits.
-func parseDigits(s string, n int) (digits []int, ok bool) {
-	digits = make([]int, 0, n)
-	for _, c := range s {
-		switch {
-		case c >= '0' && c <= '9':
-			digits = append(digits, int(c-'0'))
+// parse removes the mask punctuation ('.', '-', '/') from s. It returns
+// ok=true only if exactly n characters are left, all from charset, and the
+// last two (the check digits) are digits.
+func parse(s string, n int, charset string) (chars []byte, ok bool) {
+	chars = make([]byte, 0, n)
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; {
+		case strings.IndexByte(charset, c) >= 0:
+			chars = append(chars, c)
 		case c == '.' || c == '-' || c == '/':
 		default:
 			return nil, false
 		}
 	}
-	return digits, len(digits) == n
+	if len(chars) != n {
+		return nil, false
+	}
+	for _, c := range chars[n-2:] {
+		if c < '0' || c > '9' {
+			return nil, false
+		}
+	}
+	return chars, true
 }

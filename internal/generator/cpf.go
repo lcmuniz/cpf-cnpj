@@ -5,19 +5,19 @@ const cpfMask = "###.###.###-##"
 // GenerateCPF returns a random valid CPF. If masked is true it is formatted
 // as XXX.XXX.XXX-XX, otherwise it is returned as 11 plain digits.
 func GenerateCPF(masked bool) string {
-	cpf := append(randomDigits(9), 0, 0)
+	cpf := append(randomChars(9, digitChars), 0, 0)
 	cpf[9] = checkDigit(cpf[:9], cpfWeights(9))
 	cpf[10] = checkDigit(cpf[:10], cpfWeights(10))
 
 	if masked {
 		return format(cpf, cpfMask)
 	}
-	return format(cpf, "###########")
+	return string(cpf)
 }
 
 // IsValidCPF reports whether s is a valid CPF, with or without the mask.
 func IsValidCPF(s string) bool {
-	d, ok := parseDigits(s, 11)
+	d, ok := parse(s, 11, digitChars)
 	if !ok || allEqual(d) {
 		return false
 	}

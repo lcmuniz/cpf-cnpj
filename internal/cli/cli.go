@@ -11,11 +11,18 @@ import (
 	"golang.design/x/clipboard"
 )
 
+// Options are the command-line choices passed to a generator.
+type Options struct {
+	Masked bool // format with the document's mask
+	Alpha  bool // use the alphanumeric format (only if Tool.AlphaHelp is set)
+}
+
 // Tool describes one generator command.
 type Tool struct {
-	Name     string            // document name shown in help, e.g. "CPF"
-	MaskHint string            // mask format shown in help, e.g. "XXX.XXX.XXX-XX"
-	Generate func(bool) string // returns a number, masked if the argument is true
+	Name      string               // document name shown in help, e.g. "CPF"
+	MaskHint  string               // mask format shown in help, e.g. "XXX.XXX.XXX-XX"
+	AlphaHelp string               // help for the -alpha flag; empty means no such flag
+	Generate  func(Options) string // returns a new number
 }
 
 // Main parses the command line, prints a generated number and copies it to
@@ -30,6 +37,10 @@ func (t Tool) Main(args []string, stdout, stderr io.Writer) int {
 	}
 	masked := fs.Bool("mask", false, fmt.Sprintf("format the %s as %s", t.Name, t.MaskHint))
 	noCopy := fs.Bool("no-copy", false, "only print, do not copy to the clipboard")
+	alpha := new(bool)
+	if t.AlphaHelp != "" {
+		fs.BoolVar(alpha, "alpha", false, t.AlphaHelp)
+	}
 	if err := fs.Parse(args[1:]); err != nil {
 		if err == flag.ErrHelp {
 			return 0
@@ -37,7 +48,7 @@ func (t Tool) Main(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	number := t.Generate(*masked)
+	number := t.Generate(Options{Masked: *masked, Alpha: *alpha})
 	fmt.Fprintln(stdout, number)
 
 	if !*noCopy {
