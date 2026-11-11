@@ -10,6 +10,6 @@ func main() {
 	cli.Tool{
 		Name:     "CPF",
 		MaskHint: "XXX.XXX.XXX-XX",
-		Generate: generator.GenerateCPF,
+		Generate: func(o cli.Options) string { return generator.GenerateCPF(o.Masked) },
 	}.Run()
 }

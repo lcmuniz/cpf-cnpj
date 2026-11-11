@@ -8,8 +8,14 @@ import (
 
 func main() {
 	cli.Tool{
-		Name:     "CNPJ",
-		MaskHint: "XX.XXX.XXX/XXXX-XX",
-		Generate: generator.GenerateCNPJ,
+		Name:      "CNPJ",
+		MaskHint:  "XX.XXX.XXX/XXXX-XX",
+		AlphaHelp: "generate an alphanumeric CNPJ (format issued from July 2026)",
+		Generate: func(o cli.Options) string {
+			if o.Alpha {
+				return generator.GenerateAlphanumericCNPJ(o.Masked)
+			}
+			return generator.GenerateCNPJ(o.Masked)
+		},
 	}.Run()
 }

@@ -8,13 +8,18 @@ import (
 
 func fakeTool() Tool {
 	return Tool{
-		Name:     "TEST",
-		MaskHint: "X-X",
-		Generate: func(masked bool) string {
-			if masked {
-				return "1-2"
+		Name:      "TEST",
+		MaskHint:  "X-X",
+		AlphaHelp: "use letters",
+		Generate: func(o Options) string {
+			n := "12"
+			if o.Alpha {
+				n = "A2"
 			}
-			return "12"
+			if o.Masked {
+				return n[:1] + "-" + n[1:]
+			}
+			return n
 		},
 	}
 }
@@ -26,6 +31,8 @@ func TestMainPrintsNumber(t *testing.T) {
 	}{
 		{[]string{"test", "-no-copy"}, "12\n"},
 		{[]string{"test", "-no-copy", "-mask"}, "1-2\n"},
+		{[]string{"test", "-no-copy", "-alpha"}, "A2\n"},
+		{[]string{"test", "-no-copy", "-alpha", "-mask"}, "A-2\n"},
 	}
 	for _, tt := range tests {
 		var out, errOut bytes.Buffer
@@ -52,5 +59,14 @@ func TestMainBadFlag(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if code := fakeTool().Main([]string{"test", "-nope"}, &out, &errOut); code != 2 {
 		t.Fatalf("exit code = %d, want 2", code)
+	}
+}
+
+func TestMainNoAlphaFlagWhenUnsupported(t *testing.T) {
+	tool := fakeTool()
+	tool.AlphaHelp = ""
+	var out, errOut bytes.Buffer
+	if code := tool.Main([]string{"test", "-alpha"}, &out, &errOut); code != 2 {
+		t.Fatalf("exit code = %d, want 2 for an unknown -alpha flag", code)
 	}
 }

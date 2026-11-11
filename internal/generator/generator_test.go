@@ -75,10 +75,48 @@ func TestGenerateCNPJ(t *testing.T) {
 	}
 }
 
-func TestRandomDigitsNeverAllEqual(t *testing.T) {
+func TestRandomCharsNeverAllEqual(t *testing.T) {
 	for range 100000 {
-		if d := randomDigits(2); allEqual(d) {
-			t.Fatalf("randomDigits returned repeated digits %v", d)
+		if d := randomChars(2, digitChars); allEqual(d) {
+			t.Fatalf("randomChars returned repeated characters %q", d)
+		}
+	}
+}
+
+func TestIsValidCNPJAlphanumeric(t *testing.T) {
+	tests := []struct {
+		in   string
+		want bool
+	}{
+		// Worked example from the Receita Federal Q&A on the alphanumeric CNPJ.
+		{"12ABC34501DE35", true},
+		{"12.ABC.345/01DE-35", true},
+		{"12ABC34501DE36", false}, // wrong second check digit
+		{"12ABC34501DE45", false}, // wrong first check digit
+		{"12abc34501de35", false}, // letters must be uppercase
+		{"12ABC34501DE3A", false}, // check digits must be numeric
+		{"12ABC34501D-35", false}, // too short
+		{"AAAAAAAAAAAAAA", false},
+		{"12.ABC.345/01DE-3$", false},
+	}
+	for _, tt := range tests {
+		if got := IsValidCNPJ(tt.in); got != tt.want {
+			t.Errorf("IsValidCNPJ(%q) = %v, want %v", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestGenerateAlphanumericCNPJ(t *testing.T) {
+	plain := regexp.MustCompile(`^[0-9A-Z]{12}\d{2}$`)
+	masked := regexp.MustCompile(`^[0-9A-Z]{2}\.[0-9A-Z]{3}\.[0-9A-Z]{3}/[0-9A-Z]{4}-\d{2}$`)
+	letter := regexp.MustCompile(`[A-Z]`)
+	for range 10000 {
+		c := GenerateAlphanumericCNPJ(false)
+		if !plain.MatchString(c) || !letter.MatchString(c) || !IsValidCNPJ(c) {
+			t.Fatalf("GenerateAlphanumericCNPJ(false) = %q, not a valid alphanumeric CNPJ", c)
+		}
+		if c := GenerateAlphanumericCNPJ(true); !masked.MatchString(c) || !IsValidCNPJ(c) {
+			t.Fatalf("GenerateAlphanumericCNPJ(true) = %q, not a valid masked CNPJ", c)
 		}
 	}
 }

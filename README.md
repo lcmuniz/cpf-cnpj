@@ -15,6 +15,9 @@ $ cpf
 
 $ cnpj --mask
 11.222.333/0001-81
+
+$ cnpj --alpha --mask
+12.ABC.345/01DE-35
 ```
 
 The numbers are random. They pass the official check-digit validation but are not
@@ -37,17 +40,20 @@ make install
 
 ## Usage
 
-| Command        | Output example       |
-| -------------- | -------------------- |
-| `cpf`          | `52998224725`        |
-| `cpf --mask`   | `529.982.247-25`     |
-| `cnpj`         | `11222333000181`     |
-| `cnpj --mask`  | `11.222.333/0001-81` |
+| Command               | Output example       |
+| --------------------- | -------------------- |
+| `cpf`                 | `52998224725`        |
+| `cpf --mask`          | `529.982.247-25`     |
+| `cnpj`                | `11222333000181`     |
+| `cnpj --mask`         | `11.222.333/0001-81` |
+| `cnpj --alpha`        | `12ABC34501DE35`     |
+| `cnpj --alpha --mask` | `12.ABC.345/01DE-35` |
 
-Flags (both tools):
+Flags:
 
 - `--mask`: format the number with dots, slash and dash.
 - `--no-copy`: only print the number, do not touch the clipboard.
+- `--alpha` (`cnpj` only): generate an [alphanumeric CNPJ](#alphanumeric-cnpj).
 
 If the clipboard is not available (for example on a server without a display), the
 number is still printed and a warning goes to stderr.
@@ -63,6 +69,24 @@ Both documents use a mod-11 check-digit algorithm:
 - **CPF**: 9 random digits, then 2 check digits computed with weights 10..2 and 11..2.
 - **CNPJ**: 12 random digits, then 2 check digits computed with the weights
   `5 4 3 2 9 8 7 6 5 4 3 2` and `6 5 4 3 2 9 8 7 6 5 4 3 2`.
+
+### Alphanumeric CNPJ
+
+From July 2026 the Receita Federal issues new CNPJs whose first 12 characters may
+contain uppercase letters (`AA.AAA.AAA/AAAA-DV`). Existing numeric CNPJs stay valid, and
+the two check digits are still numbers. The check digits use the same weights as
+above, with each character worth its ASCII code minus 48: `0`–`9` are 0–9 and `A`–`Z` are
+17–42. For example, `12.ABC.345/01DE-35` (the example published by the Receita) is valid.
+
+`cnpj --alpha` always includes at least one letter. `IsValidCNPJ` accepts both formats.
+The Receita also blocks some letter combinations (to avoid offensive words) but does not
+publish that list, so a generated number may, in rare cases, be one that will never be
+issued. It still passes check-digit validation.
+
+Source: [Perguntas e respostas sobre o CNPJ alfanumérico](https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/cnpj/cnpj-alfanumerico.pdf)
+(Receita Federal; IN RFB 2.229/2024).
+
+### Repeated digits
 
 Sequences made of a single repeated digit (such as `111.111.111-11`) satisfy the math
 but are rejected by real validators, so the generator never produces them.
@@ -91,11 +115,6 @@ make clean
 CI runs formatting, `go vet`, tests and the build on Linux, macOS and Windows for every
 push and pull request.
 
-## Roadmap
-
-- Support the new alphanumeric CNPJ format announced by the Brazilian Federal Revenue
-  Service (Receita Federal).
-
 ## License
 
 [MIT](LICENSE)
@@ -114,6 +133,7 @@ go install github.com/lcmuniz/cpf-cnpj/cmd/cnpj@latest
 cpf              # 52998224725
 cpf --mask       # 529.982.247-25
 cnpj --mask      # 11.222.333/0001-81
+cnpj --alpha     # CNPJ alfanumérico (formato novo, a partir de julho/2026)
 cnpj --no-copy   # só imprime, não copia
 ```
 
